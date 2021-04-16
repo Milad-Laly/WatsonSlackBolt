@@ -12,12 +12,17 @@ from watsonNLU import watsonNLU
 
 import database
 
-# Install the Slack app and get xoxb- token in advance
 app = App(token="ENTER XOXB TOKEN")
 
+@app.event({"type": "message", "subtype": None})
+def textRetrival(body):
+    event = body["event"]
+    slackText = event.get("text", None) or event["text"]
+    watsonAnalysis = watsonNLU(slackText)
+    database.main(event,watsonAnalysis,databaseTeamTable)
 
 @app.shortcut("tone_analysis_action")
-def open_modal(ack, shortcut, client, logger):
+def watsonShortcut(ack, shortcut, client, logger):
     # Acknowledge shortcut request
     ack()
     try:
@@ -27,8 +32,6 @@ def open_modal(ack, shortcut, client, logger):
 
         #Calls watsonNLU for sentiment
         watsonAnalysis = watsonNLU(textValue)
-
-        database.main(event,watsonAnalysis)
 
         #Sentiment Options
         watsonSentimentDocumentScore = watsonAnalysis["sentiment"]["document"]["score"] 
@@ -90,35 +93,35 @@ def open_modal(ack, shortcut, client, logger):
                         "type": "section",
                         "text": {
                             "type": "mrkdwn",
-                            "text":  "The sadness score of the text is " + str(watsonEmotionSadnessRounded)
+                            "text":  "The *sadness* :cry: *score* of the text is " + str(watsonEmotionSadnessRounded)
                         },
                     },
                     {
                         "type": "section",
                         "text": {
                             "type": "mrkdwn",
-                            "text":  "The joyfulness score of the text is " + str(watsonEmotionJoyRounded)
+                            "text":  "The *joyfulness* :joy: *score* of the text is " + str(watsonEmotionJoyRounded)
                         },
                     },
                     {
                         "type": "section",
                         "text": {
                             "type": "mrkdwn",
-                            "text":  "The fearfulness score of the text is " + str(watsonEmotionFearRounded)
+                            "text":  "The *fearfulness* :fearful: *score* of the text is " + str(watsonEmotionFearRounded)
                         },
                     },
                     {
                         "type": "section",
                         "text": {
                             "type": "mrkdwn",
-                            "text":  "The disgusted score of the text is " + str(watsonEmotionDisgustRounded)
+                            "text":  "The *disgusted* :nauseated_face: *score* of the text is " + str(watsonEmotionDisgustRounded)
                         },
                     },
                     {
                         "type": "section",
                         "text": {
                             "type": "mrkdwn",
-                            "text":  "The angerness score of the text is " + str(watsonEmotionAngerRounded)
+                            "text":  "The *angerness* :rage: *score* of the text is " + str(watsonEmotionAngerRounded)
                         },
                     },
                     {
@@ -144,4 +147,13 @@ def open_modal(ack, shortcut, client, logger):
 if __name__ == "__main__":
     # export SLACK_APP_TOKEN=xapp.....
     # export SLACK_BOT_TOKEN=xoxb.....
-    SocketModeHandler(app, "ENTER XAPP TOKEN ").start()
+    while True:
+        try:
+            print("Welcome to Slack Tone analyzer")
+            print("Enter the team name currently on the workshop: ")
+            databaseTeamTable = input()
+            if databaseTeamTable[0] != ' ':
+                SocketModeHandler(app, "ENTER XAPP TOKEN").start()
+            print("Invalid Database Table name entered")
+        except Exception as e:
+            print(e)

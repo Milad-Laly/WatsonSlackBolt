@@ -1,1 +1,1 @@
-SELECT * FROM group1
+SELECT * FROM sqlite_master WHERE type='table'

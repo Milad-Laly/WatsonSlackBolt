@@ -27,30 +27,30 @@ def databaseTable(conn, sqlCommands):
     except sqlite3.Error as e:
         print(e)
 
-def databaseInsertData(conn, slackValues):
+def databaseInsertData(conn, slackValues,databaseName):
     
-    sqlInsert = ''' INSERT INTO group1(user_id, user_text, message_timestamp_unix, message_timestamp, watson_NLU_result)
+    sqlInsert = ''' INSERT INTO {0}(user_id, user_text, message_timestamp_unix, message_timestamp, watson_NLU_result)
     VALUES(?,?,?,?,?)
-    '''
+    '''.format(databaseName)
     cur = conn.cursor()
     cur.execute(sqlInsert, slackValues)
     conn.commit()
     return cur.lastrowid
 
 #Use parameters as value from NLU & Slack
-def main(slackValues,watsonValues):
+def main(slackValues,watsonValues,databaseTeamName):
     database = r"database/groupValues.db"
 
-    createGroup1Table = """
-    CREATE TABLE IF NOT EXISTS group1(
+    createTable = """
+    CREATE TABLE IF NOT EXISTS {0}(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id TEXT NOT NULL,
         user_text TEXT NOT NULL,
         message_timestamp_unix TEXT NOT NULL,
         message_timestamp TEXT NOT NULL,
-        watson_NLU_result TEXT NOT NULL
+        watson_NLU_result BLOB NOT NULL
     );
-    """
+    """.format(databaseTeamName)
     #slackEventChannelValues = slackValues.get("channel", None) or slackValues["channel"]
     slackEventUserIDValues = slackValues.get("user", None) or slackValues["user"]
     slackEventsTextValues = slackValues.get("text", None) or slackValues["text"]
@@ -65,8 +65,8 @@ def main(slackValues,watsonValues):
     conn = databaseConnection(database)
 
     if conn is not None:
-        databaseTable(conn, createGroup1Table)
-        databaseInsertData(conn, insertableSlackValues)
+        databaseTable(conn, createTable)
+        databaseInsertData(conn, insertableSlackValues,databaseTeamName)
         print("inserted")
     else:
         print("Error! Database connection not working")

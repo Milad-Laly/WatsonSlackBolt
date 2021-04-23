@@ -1,5 +1,6 @@
 import logging
-
+import sys
+sys.path.insert(0, 'mongoDB')
 logging.basicConfig(level=logging.DEBUG)
 
 import os
@@ -11,6 +12,7 @@ from slack_bolt.adapter.socket_mode import SocketModeHandler
 from watsonNLU import watsonNLU
 
 import database
+import mongoDB
 
 app = App(token="ENTER XOXB TOKEN")
 
@@ -20,6 +22,7 @@ def textRetrival(body):
     slackText = event.get("text", None) or event["text"]
     watsonAnalysis = watsonNLU(slackText)
     database.main(event,watsonAnalysis,databaseTeamTable)
+    mongoDB.main(event,watsonAnalysis,databaseTeamTable)
 
 @app.shortcut("tone_analysis_action")
 def watsonShortcut(ack, shortcut, client, logger):
@@ -30,29 +33,29 @@ def watsonShortcut(ack, shortcut, client, logger):
         event = shortcut["message"]
         textValue = event.get("text", None) or event["text"]
 
-        #Calls watsonNLU for sentiment
-        watsonAnalysis = watsonNLU(textValue)
+        #Retrieves sentiment from MongoDB
+        sentimentRetrieval = mongoDB.retrieveDataMongoDB(textValue, databaseTeamTable)
 
         #Sentiment Options
-        watsonSentimentDocumentScore = watsonAnalysis["sentiment"]["document"]["score"] 
+        watsonSentimentDocumentScore = sentimentRetrieval["watson_NLU_result"]["sentiment"]["document"]["score"] 
         watsonSentimentScoreRounded = "{:.2%}".format(watsonSentimentDocumentScore)
 
-        watsonSentimentDocumentTone = watsonAnalysis["sentiment"]["document"]["label"]
+        watsonSentimentDocumentTone = sentimentRetrieval["watson_NLU_result"]["sentiment"]["document"]["label"]
 
         #Emotion Options
-        watsonEmotionSadnessScore = watsonAnalysis["emotion"]["document"]["emotion"]["sadness"]
+        watsonEmotionSadnessScore = sentimentRetrieval["watson_NLU_result"]["emotion"]["document"]["emotion"]["sadness"]
         watsonEmotionSadnessRounded = "{:.2%}".format(watsonEmotionSadnessScore)
 
-        watsonEmotionJoyScore = watsonAnalysis["emotion"]["document"]["emotion"]["joy"]
+        watsonEmotionJoyScore = sentimentRetrieval["watson_NLU_result"]["emotion"]["document"]["emotion"]["joy"]
         watsonEmotionJoyRounded = "{:.2%}".format(watsonEmotionJoyScore)
 
-        watsonEmotionFearScore = watsonAnalysis["emotion"]["document"]["emotion"]["fear"]
+        watsonEmotionFearScore = sentimentRetrieval["watson_NLU_result"]["emotion"]["document"]["emotion"]["fear"]
         watsonEmotionFearRounded = "{:.2%}".format(watsonEmotionFearScore)
         
-        watsonEmotionDisgustScore = watsonAnalysis["emotion"]["document"]["emotion"]["disgust"]
+        watsonEmotionDisgustScore = sentimentRetrieval["watson_NLU_result"]["emotion"]["document"]["emotion"]["disgust"]
         watsonEmotionDisgustRounded = "{:.2%}".format(watsonEmotionDisgustScore)
         
-        watsonEmotionAngerScore = watsonAnalysis["emotion"]["document"]["emotion"]["anger"]
+        watsonEmotionAngerScore = sentimentRetrieval["watson_NLU_result"]["emotion"]["document"]["emotion"]["anger"]
         watsonEmotionAngerRounded = "{:.2%}".format(watsonEmotionAngerScore)
 
 
@@ -75,7 +78,7 @@ def watsonShortcut(ack, shortcut, client, logger):
                         "type": "section",
                         "text": {
                             "type": "mrkdwn",
-                            "text": "The tone of this text is *" + watsonSentimentDocumentTone + "* and the score is " + str(watsonSentimentScoreRounded)
+                            "text": "The tone :thinking_face: of this text is *" + watsonSentimentDocumentTone + "* and the score is " + str(watsonSentimentScoreRounded)
                         }
                     }, 
                     #Maybe add sentence to improve mood if negative
@@ -123,18 +126,6 @@ def watsonShortcut(ack, shortcut, client, logger):
                             "type": "mrkdwn",
                             "text":  "The *angerness* :rage: *score* of the text is " + str(watsonEmotionAngerRounded)
                         },
-                    },
-                    {
-                        "type": "divider"
-                    },
-                    {
-                        "type": "context",
-                        "elements": [
-                            {
-                                "type": "mrkdwn",
-                                "text": json.dumps(watsonAnalysis, indent=2)
-                            }
-                        ],
                     },
                 ],
             },
